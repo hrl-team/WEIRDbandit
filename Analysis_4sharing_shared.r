@@ -868,7 +868,49 @@ ggsave("LotteryPlotTransfer.pdf", LotteryPlotTransfer, dpi = 300, width = 80, he
 ggsave("Distance175perf.pdf", PvalPlotUti_BW, dpi = 300, width = 80, height =30, units =  "cm")
 ggsave("Distance175perfParams.pdf", PvalPlotUti_BW_Params, dpi = 300, width = 80, height =30, units =  "cm")
 
+###BUT WAIT!!! What about the stats? Here you go:
+###############################################
+#LEARNING PHASE
 
+
+LEARNINGPHASE0 <- glmer(ChoseGoodorBad ~ 1 + (1|Participant.Private.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                              optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("1"),]) #convergence forced me to remove random slope here
+
+LEARNINGPHASE1 <- glmer(ChoseGoodorBad ~ deltaEVfactor + (deltaEVfactor|Participant.Private.ID), 
+                     family=binomial, control=glmerControl(optimizer="bobyqa", 
+                    optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("1"),])
+
+LEARNINGPHASE1_bis <- glmer(ChoseGoodorBad ~ Country + (deltaEVfactor|Participant.Private.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                        optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("1"),])
+
+LEARNINGPHASE2 <- glmer(ChoseGoodorBad ~ Country*deltaEVfactor + (deltaEVfactor|Participant.Private.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                              optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("1"),])
+
+#save these models
+save(LEARNINGPHASE1, LEARNINGPHASE2, file = "LEARNINGPHASEMODELS.RData")
+
+anova(LEARNINGPHASE0,LEARNINGPHASE1,LEARNINGPHASE2)
+Anova(LEARNINGPHASE2)
+
+#Quick bayes factor of frequentist nested models
+bayesfactor_models(LEARNINGPHASE1,LEARNINGPHASE2, denominator = LEARNINGPHASE1)
+
+
+#Wagenmakers/Dunham operation to get the evidence strength (AICc weight ratio) for the best model
+ModNull = exp((AICc(LEARNINGPHASE1)-AICc(LEARNINGPHASE1))/-2) #best model to the left
+ModFull = exp((AICc(LEARNINGPHASE2)-AICc(LEARNINGPHASE1))/-2)
+
+NullWeight = ModNull / (ModNull + ModFull)
+FullWeight = ModFull / (ModNull + ModFull)
+EvidenceStrength = FullWeight/NullWeight #full is x times as likely...
+
+
+
+
+                             
 #that's it, hope you enjoyed the ride! :)
 #(you might be wondering, were are the stats? 
 #well, there was no fancy coding to produce them, 
