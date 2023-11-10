@@ -870,6 +870,8 @@ ggsave("Distance175perfParams.pdf", PvalPlotUti_BW_Params, dpi = 300, width = 80
 
 ###BUT WAIT!!! What about the stats? Here you go:
 ###############################################
+#We're sparing you a lot of exploration and additional analyses here (for example, we have an entire bayesian replication of the whole statistical pipeline, and per-decision context analyses too) If you want those as well please contact us.
+
 #LEARNING PHASE
 
 
@@ -889,9 +891,6 @@ LEARNINGPHASE2 <- glmer(ChoseGoodorBad ~ Country*deltaEVfactor + (deltaEVfactor|
                         family=binomial, control=glmerControl(optimizer="bobyqa", 
                                                               optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("1"),])
 
-#save these models
-save(LEARNINGPHASE1, LEARNINGPHASE2, file = "LEARNINGPHASEMODELS.RData")
-
 anova(LEARNINGPHASE0,LEARNINGPHASE1,LEARNINGPHASE2)
 Anova(LEARNINGPHASE2)
 
@@ -907,9 +906,80 @@ NullWeight = ModNull / (ModNull + ModFull)
 FullWeight = ModFull / (ModNull + ModFull)
 EvidenceStrength = FullWeight/NullWeight #full is x times as likely...
 
+#TRANSFER PHASE
+
+TRANSFERPHASE0 <- glmer(ChoseGoodorBad ~ 1 + (deltaEVfactor|Participant.Public.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                              optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("2"),])
+
+TRANSFERPHASE1 <- glmer(ChoseGoodorBad ~ deltaEVfactor + (deltaEVfactor|Participant.Public.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                              optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("2"),])
+
+TRANSFERPHASE2_bis <- glmer(ChoseGoodorBad ~ deltaEVfactor+Country + (deltaEVfactor|Participant.Public.ID), 
+                         family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                               optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("2"),])
+
+TRANSFERPHASE2 <- glmer(ChoseGoodorBad ~ deltaEVfactor*Country + (deltaEVfactor|Participant.Public.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                              optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("2"),])
 
 
+#run model comparisons
+anova(TRANSFERPHASE0,TRANSFERPHASE1,TRANSFERPHASE2)
+Anova(TRANSFERPHASE2)
 
+ModNull = exp((AICc(TRANSFERPHASE1)-AICc(TRANSFERPHASE1))/-2) #best model to the left
+ModFull = exp((AICc(TRANSFERPHASE2)-AICc(TRANSFERPHASE1))/-2)
+
+NullWeight = ModNull / (ModNull + ModFull)
+FullWeight = ModFull / (ModNull + ModFull)
+EvidenceStrength = FullWeight/NullWeight #full is x times as likely...
+
+
+#Quick bayes factor of frequentist nested models
+bayesfactor_models(TRANSFERPHASE1,TRANSFERPHASE2, denominator = TRANSFERPHASE1)
+
+#LOTTERY (RISK BENCHMARK) #going at it with and without random slopes have different implications for convergence
+
+
+EXPLICITBENCH0 <- glmer(ChoseGoodorBad ~ 1 + (1|Participant.Public.ID), 
+                           family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                                 optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("3")
+                                                                                                               & CompleteDF$deltaEVfactor %in% c("9","6.5","4","1.5"),])
+
+EXPLICITBENCH1 <- glmer(ChoseGoodorBad ~ deltaEVfactor + (1|Participant.Public.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                              optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("3")
+                                                                                                            & CompleteDF$deltaEVfactor %in% c("9","6.5","4","1.5"),])
+EXPLICITBENCH2 <- glmer(ChoseGoodorBad ~ deltaEVfactor*Country + (1|Participant.Public.ID), 
+                          family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                                optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("3")
+                                                                                                              & CompleteDF$deltaEVfactor %in% c("9","6.5","4","1.5"),])
+
+anova(EXPLICITBENCH0,EXPLICITBENCH1,EXPLICITBENCH2)
+Anova(EXPLICITBENCH2)
+                        
+
+#LOTTERY (TRANSFER CONTEXTS)
+
+EXPLICITTR0 <- glmer(ChoseGoodorBad ~ 1 + (1|Participant.Public.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                              optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("3")
+                                                                                                            & CompleteDF$deltaEVfactor %in% c("7.25","6.75","2.25","1.75"),])
+
+EXPLICITTR1 <- glmer(ChoseGoodorBad ~ deltaEVfactor + (1|Participant.Public.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                              optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("3")
+                                                                                                            & CompleteDF$deltaEVfactor %in% c("7.25","6.75","2.25","1.75"),])
+EXPLICITTR2 <- glmer(ChoseGoodorBad ~ deltaEVfactor*Country + (1|Participant.Public.ID), 
+                        family=binomial, control=glmerControl(optimizer="bobyqa", 
+                                                              optCtrl = list(maxfun = 1000000)), CompleteDF[CompleteDF$WhichPhase %in% c("3")
+                                                                                                            & CompleteDF$deltaEVfactor %in% c("7.25","6.75","2.25","1.75"),])
+
+anova(EXPLICITTR0,EXPLICITTR1,EXPLICITTR2)
+Anova(EXPLICITTR2)
+     
                              
 #that's it, hope you enjoyed the ride! :)
 #(you might be wondering, were are the stats? 
